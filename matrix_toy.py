@@ -2,6 +2,9 @@ from fractions import Fraction
 import copy
 
 #TODO: better handling of fractions, decimals, eval.
+#TODO: Rewrite set command to be consistent with other commands.
+#TODO: Allow toggle between fraction and decimal coefficient representations
+#TODO: provide a command rewind feature.
 
 def swap(a, b, matrix):
     for i in range(len(matrix[a])):
@@ -21,10 +24,111 @@ def sub(target, source, scalar, matrix):
     for i in range(len(matrix[target])):
         matrix[target][i] = matrix[target][i] - matrix[source][i] * scalar
 
+def rref(matrix):
+    row = 0
+    for i in range(len(matrix[0]) - 1):
+        if matrix[row][i] != 1 and matrix[row][i] != 0:
+            mul(row, 1.0 / matrix[row][i], matrix)
+        for j in range(len(matrix)):
+            if j == row: continue
+            if matrix[j][i] != 0:
+                sub(j, row, matrix[j][i], matrix)
+        row += 1
+
+# def myEval(expression):
+#     #Perform lexical analysis - extract tokens
+#     tokens = [("begin")]
+#     group = ""
+#     special = "()+-*/"
+#     precedence = {"add": 1, "sub": 1, "mul": 2, "div": 2, "neg": 3}
+#     associativity = {"add": 0, "sub": 0, "mul": 0, "div": 0, "neg": 1}
+#     #TODO: There has to be a more elegant way to do this.
+#     for c in expression:
+#         if c == " ":
+#             continue
+#         if c not in special:
+#             group += c
+#         else:
+#             if len(group) > 0:
+#                 tokens.append(("number", group))
+#                 group = ""
+#             if c == "(":
+#                 tokens.append(("lparen", "("))
+#             elif c == ")":
+#                 tokens.append(("rparen", ")"))
+#             elif c == "+":
+#                 tokens.append(("binop", "+", precedence["add"], associativity["add"]))
+#             elif c == "-":
+#                 last_token = tokens[-1]
+#                 if last_token[0] == "begin" or last_token[0] == "binop" or last_token[0] == "lparen":
+#                     tokens.append(("unop", "-", precedence["neg"], associativity["neg"]))
+#                 else:
+#                     tokens.append(("binop", "-", precedence["sub"], associativity["sub"]))
+#             elif c == "*":
+#                 tokens.append(("binop", "*", precedence["mul"], associativity["mul"]))
+#             elif c == "/":
+#                 tokens.append(("binop", "/", precedence["div"], associativity["div"]))
+#     if len(group) > 0: tokens.append(("number", group))
+
+#     print(tokens)
+
+#     #Convert to post fix notation TODO: error handle
+#     post_fix_tokens = []
+#     operators = []
+#     for token in tokens:
+#         if token[0] == "number":
+#             post_fix_tokens.append(token)
+#         elif token[0] == "binop" or token[0] == "unop":
+#             while len(operators) > 0 and operators[-1][0] != "lparen" and (operators[-1][2] >= token[2]):
+#                 #or (operators[-1][2] == token[2] and token[3] == 0) TODO: Investigate why this extra condition makes it incorrect
+#                 post_fix_tokens.append(operators.pop())
+#             operators.append(token)
+#         elif token[0] == "(":
+#             operators.append(token)
+#         elif token[0] == ")":
+#             #TODO: handle mismatched parentheses.
+#             while len(operators) > 0 and operators[-1][0] != "(":
+#                 post_fix_tokens.append(operators.pop())
+#             operators.pop()
+#     while len(operators) > 0:
+#         post_fix_tokens.append(operators.pop())
+
+#     print(post_fix_tokens)
+#     try:
+#         #Evaluate expression using stack
+#         operands = []
+#         for token in post_fix_tokens:
+#             if token[0] == "number":
+#                 operands.append(float(token[1]))
+#             elif token[1] == "+":
+#                 rhs = operands.pop()
+#                 lhs = operands.pop()
+#                 operands.append(lhs + rhs)
+#             elif token[1] == "-":
+#                 rhs = operands.pop()
+#                 if token[0] == "unop":
+#                     operators.append(rhs * -1)
+#                     continue
+#                 lhs = operands.pop()
+#                 operands.append(lhs - rhs)
+#             elif token[1] == "*":
+#                 rhs = operands.pop()
+#                 lhs = operands.pop()
+#                 operands.append(lhs * rhs)
+#             elif token[1] == "/":
+#                 rhs = operands.pop()
+#                 lhs = operands.pop()
+#                 operands.append(lhs / rhs)
+#         return operands[0]
+#     except (ValueError, TypeError) as e:
+#         print(e)
+#         print("Invalid expression.")
+#         return 
+
 def checkIndex(matrix, index):
     return 0 <= index < len(matrix)
 
-def inputMatrix():
+def setMatrix():
     response = ""
     matrix = []
     print("================== MATRIX BUILDER ==================")
@@ -73,17 +177,20 @@ cmds = [
     "help",
     "stop",
     "v++",
-    "v--"
+    "v--",
+    "rref",
+    "load",
+    "store"
 ]
 
 MAX_VERBOSITY = 2
 
 verbosity_level = 0
 stop = False
-matrix = inputMatrix()
-matrix_idx = -1
-matrix_history = [copy.deepcopy(matrix)]
+matrix = setMatrix()
 printMatrix(matrix)
+matrix_history = []
+matrices = {}
 
 while True:
     commands = input(">> ")
@@ -182,7 +289,7 @@ while True:
                 matrix = copy.deepcopy(matrix_history[matrix_idx])
                 if verbosity_level == 1: print("Redid operation")
         elif cmd[0] == "set":
-            matrix = inputMatrix()
+            matrix = setMatrix()
             mutated = True
         elif cmd[0] == "undoall":
             matrix_idx = 0
@@ -207,6 +314,9 @@ while True:
         elif cmd[0] == "v--":
             verbosity_level = max(0, verbosity_level - 1)
             continue
+        elif cmd[0] == "rref":
+            rref(matrix)
+            mutated = True
         else:
             print("Unknown command.")
             continue
@@ -221,9 +331,6 @@ while True:
 
     if stop: break
     printMatrix(matrix)
-
-    
-
         
         
 
